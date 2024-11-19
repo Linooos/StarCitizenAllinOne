@@ -132,8 +132,24 @@ def create_vhdx(vhdx_path, size_in_mb,name):
 def add_startUp_plan(xml_path):
     # PowerShell 脚本
     powershell_script = f"""
-    $xmlPath = "{xml_path}"
-    Register-ScheduledTask -Xml (Get-Content -Path $xmlPath) -TaskName "ImportedTask" -TaskPath "\\MyTasks" -Force
+# 定义触发器，在用户登录时触发
+$trigger = New-ScheduledTaskTrigger -AtLogon
+
+# 定义动作
+$action = New-ScheduledTaskAction -Execute "powershell" -Argument "{xml_path}"
+
+# 指定任务的用户 ID（SID）
+$userid = "{user.get_user_sid()}"  # 替换为实际的用户 SID
+
+# 注册计划任务，使用指定的触发器、动作和用户 SID
+Register-ScheduledTask -TaskName "START_UP_STARCITIZEN" -Trigger $trigger -Action $action -Description "Mount game data vdisk while user login" -User $userid -RunLevel Highest
+
+# 禁用“仅在交流电源时使用”选项
+$task = Get-ScheduledTask -TaskName "START_UP_STARCITIZEN"
+$task.Settings.DisallowStartIfOnBatteries = $false
+$task.Settings.StopIfGoingOnBatteries = $false
+Set-ScheduledTask -TaskName "START_UP_STARCITIZEN" -Settings $task.Settings
+
     """
 
     # 创建 PowerShell 脚本文件
@@ -155,14 +171,19 @@ if __name__ == '__main__':
         # ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, ' '.join(sys.argv), None, 1)
         exit(1)
 
+
+
     try:
         format_screen("如果你有同时游玩pu，ptu，eptu的需求，那么这个工具可以为你省去两个本体的空间占用，同时不需要再文件夹改名然后下载更新。\n"
                       "一个本体，三种服务器平行存在，更新互不干扰。\n"
                       "！！！注意！！！\n"
+                      "如果第一次运行请在管理员powershell中运行 Set-Executionpolicy Remotesigned"
                       "部署本脚本需要预留一个本体的空间，供复制文件使用，在150GB左右预留\n"
                       "需要管理员权限\n"
-                      "脚本会在RSI路径下创建一些文件，请勿删除\n"
-                      "脚本会添加一个名为start_up_plan的计划任务，请勿删除\n")
+                      "脚本会在RSI路径下创建一些文件，请勿删除,starcitizen_backup文件夹为脚本备份，如果运行失败，将其改回原名\n"
+                      "运行脚本时请关闭启动器和游戏数据目录的资源管理器，否则会出现无法访问数据的情况\n"
+                      "脚本会添加一个名为START_UP_STARCITIZEN的计划任务，请勿删除\n")
+        os.system("pause")
         format_screen("请选择：StarCitizen_Launcher.exe")
         root = tk.Tk()
         root.withdraw()

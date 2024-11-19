@@ -133,7 +133,7 @@ def copy_file_with_progress(src_file, dst_file, copied_size, lock,chunk_size=102
         dst.truncate(file_size)  # 预分配空间
 
     offsets = [(i, chunk_size) for i in range(0, file_size, chunk_size)]
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=16) as executor:
         futures = []
         for offset, size in offsets:
             futures.append(executor.submit(copy_file_chunk, src_file, dst_file, offset, size, copied_size, lock))
